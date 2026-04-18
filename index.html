@@ -1776,15 +1776,44 @@
     }
   })();
 
-  // ── COUNTDOWN 24H ──
+
+  // ── COMPTE À REBOURS 24H PAR VISITEUR (cookie) ──
   (function() {
-    const key = 'promo_deadline';
-    let deadline = localStorage.getItem(key);
-    if (!deadline) {
-      deadline = Date.now() + 1 * 24 * 60 * 60 * 1000;
-      localStorage.setItem(key, deadline);
+    const COOKIE = 'mdgtci_deadline';
+    const DURATION = 24 * 60 * 60 * 1000; // 24h en ms
+
+    // Lire un cookie
+    function getCookie(name) {
+      const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return match ? decodeURIComponent(match[1]) : null;
     }
-    deadline = parseInt(deadline);
+
+    // Écrire un cookie qui expire dans 24h
+    function setCookie(name, value) {
+      const expires = new Date(Date.now() + DURATION);
+      document.cookie = name + '=' + encodeURIComponent(value) +
+        '; expires=' + expires.toUTCString() +
+        '; path=/; SameSite=Lax';
+    }
+
+    // Récupérer ou créer le deadline
+    let raw = getCookie(COOKIE);
+    let deadline;
+
+    if (!raw) {
+      // Nouveau visiteur → on crée un cookie 24h
+      deadline = Date.now() + DURATION;
+      setCookie(COOKIE, deadline);
+    } else {
+      deadline = parseInt(raw);
+      // Si expiré (ne devrait pas arriver, cookie supprimé automatiquement)
+      if (isNaN(deadline) || deadline < Date.now()) {
+        deadline = Date.now() + DURATION;
+        setCookie(COOKIE, deadline);
+      }
+    }
+
+    const pad = n => String(n).padStart(2, '0');
 
     function update() {
       const diff = Math.max(0, deadline - Date.now());
@@ -1792,16 +1821,18 @@
       const h = Math.floor((diff % 86400000) / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       const s = Math.floor((diff % 60000) / 1000);
-      const pad = n => String(n).padStart(2,'0');
+
       const dEl = document.getElementById('cd-d');
       const hEl = document.getElementById('cd-h');
       const mEl = document.getElementById('cd-m');
       const sEl = document.getElementById('cd-s');
+
       if (dEl) dEl.textContent = pad(d);
       if (hEl) hEl.textContent = pad(h);
       if (mEl) mEl.textContent = pad(m);
       if (sEl) sEl.textContent = pad(s);
     }
+
     update();
     setInterval(update, 1000);
   })();
